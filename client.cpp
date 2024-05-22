@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
             cin >> username;
             cout << "password=";
             cin >> password;
+            cout << "********************login = " << username << " " << password << endl;
             sockfd = open_connection(HOST, PORT, AF_INET, SOCK_STREAM, 0);
             nlohmann::json j;
             j["username"] = username;
@@ -70,10 +71,13 @@ int main(int argc, char *argv[])
             cout << response << endl << endl;
             string output;
             char cookie[300];
-            strcpy(cookie, parse_response(command, response, output, cookies_count));
-            cookies[0] = cookie;
-            cout << "????????cookies = " << cookies[0] << endl;
-            cout << "????????cookies_count = " << cookies_count << endl;
+            if (parse_response(command, response, output, cookies_count) != NULL) {
+                strcpy(cookie, parse_response(command, response, output, cookies_count));
+                cookies[0] = cookie;
+                cout << "????????cookies = " << cookies[0] << endl;
+                cout << "????????cookies_count = " << cookies_count << endl;
+
+            }
             cout << output << endl;
         } else if (command == "enter_library") {
             // sockfd = open_connection(HOST, PORT, AF_INET, SOCK_STREAM, 0);
@@ -107,7 +111,7 @@ int main(int argc, char *argv[])
             cout << "id=";
             cin >> id;
             sockfd = open_connection(HOST, PORT, AF_INET, SOCK_STREAM, 0);
-            char url[300] = "/api/v1/tema/library/books/:";
+            char url[300] = "/api/v1/tema/library/books/";
             strcat(url, id.c_str());
             message = compute_get_request(HOST, url, "application/json", (char **)cookies, cookies_count, token);
             send_to_server(sockfd, message);
@@ -159,11 +163,34 @@ int main(int argc, char *argv[])
             parse_response(command, response, output, aux_data);
             cout << output << endl;
         } else if (command == "delete_book") {
-            int id;
+            string id;
+            cout << "id=";
             cin >> id;
+            char url[300] = "/api/v1/tema/library/books/";
+            strcat(url, id.c_str());
             sockfd = open_connection(HOST, PORT, AF_INET, SOCK_STREAM, 0);
+            message = compute_delete_request(HOST, url, "application/json", cookies, cookies_count, token);
+            send_to_server(sockfd, message);
+            response = receive_from_server(sockfd);
+            cout << response << endl;
+            string output;
+            int aux_data;
+            parse_response(command, response, output, aux_data);
+            cout << output << endl;
         } else if (command == "logout") {
             sockfd = open_connection(HOST, PORT, AF_INET, SOCK_STREAM, 0);
+            message = compute_get_request(HOST, "/api/v1/tema/auth/logout", "application/json", cookies, cookies_count, token);
+            send_to_server(sockfd, message);
+            response = receive_from_server(sockfd);
+            cout << response << endl;
+            string output;
+            int success;
+            parse_response(command, response, output, success);
+            if (success == 1) {
+                cookies_count = 0;
+                strcpy(token, "\0");
+            }
+            cout << output << endl;
         } else {
             cout << "Invalid command" << endl;
         }

@@ -141,6 +141,56 @@ char *compute_post_request(char *host, char *url, char* content_type, char **bod
     return message;
 }
 
+char *compute_delete_request(char *host, char *url, char *query_params,
+                            char **cookies, int cookies_count, char *token)
+{
+    char *message = (char *)calloc(BUFLEN, sizeof(char));
+    char *line = (char *)calloc(LINELEN, sizeof(char));
+    if (query_params != NULL) {
+        sprintf(line, "DELETE %s?%s HTTP/1.1", url, query_params);
+    } else {
+        sprintf(line, "GET %s HTTP/1.1", url);
+    }
+    compute_message(message, line);
+
+    // Step 2: add the host
+
+    if (host) {
+        memset(line, 0, LINELEN);
+
+        strcpy(line, "Host: ");
+        strcat(line, host);
+        compute_message(message, line);
+    }
+
+
+    memset(line, 0, LINELEN);
+    sprintf(line, "Authorization: Bearer %s", token);
+    compute_message(message, line);
+
+    
+    // Step 3 (optional): add headers and/or cookies, according to the protocol format
+    memset(line, 0, LINELEN);
+    if (cookies) {
+        strcpy(line, "Cookie: ");
+        if (cookies != NULL) {
+
+        for (int i = 0; i < cookies_count; i++) {
+                strcat(line, cookies[i]);
+                if (i != cookies_count - 1) {
+                    strcat(line, "; ");
+                }
+        }
+        }
+        compute_message(message, line);
+
+    }
+    // Step 4: add final new line
+    compute_message(message, "");
+    free(line);
+    return message;
+}
+
 char * parse_response(std::string command, char *response, std::string &output, int &aux_data)
 {
     if (command == "register") {
@@ -187,7 +237,8 @@ char * parse_response(std::string command, char *response, std::string &output, 
                 output = output_str;
             } else {
                 output = "ERROR - Failed to log in!";
-            } 
+            }
+            return NULL;
         }
     } else if (command == "enter_library") {
         if (strstr(response, "200 OK") != NULL) {
@@ -216,43 +267,64 @@ char * parse_response(std::string command, char *response, std::string &output, 
             }
             output = books;
         } else {
-            output = "ERROR - Failed to get books!";
+            if (!strstr(response, "error\":\"Error when decoding tokenn!")) {
+                output = "ERROR - Invalid token!";
+            } else {
+                output = "ERROR - Failed to get books!";
+            }
         }
         return NULL;
     } else if (command == "get_book") {
         if (strstr(response, "200 OK") != NULL) {
             char *book = strstr(response, "timeout=");
-            book = strstr(book, "[");
+            book = strstr(book, "{");
             if (book) {
                 for (int i = 0; i < strlen(book); i++) {
-                    if (book[i] == ']') {
+                    if (book[i] == '}') {
                         book[i + 1] = '\0';
                     }
                 }
             }
             output = book;
         } else {
-            output = "ERROR - Failed to get books!";
+            if (strstr(response, "error\":\"Error when decoding tokenn!")) {
+                output = "ERROR - Invalid token!";
+            } else {
+                output = "ERROR - Failed to get books!";
+            }
         }
         return NULL;
     } else if (command == "add_book") {
         if (strstr(response, "200 OK") != NULL) {
-            output = "Successfully added book!";
+            output = "SUCCESS - Successfully added book!";
         } else {
-            output = "Failed to add book!";
+            if (strstr(response, "error\":\"Error when decoding tokenn!")) {
+                output = "ERROR - Invalid token!";
+            } else {
+                output = "ERROR - Failed to add book!";
+            }
         }
+        return NULL;
     } else if (command == "delete_book") {
         if (strstr(response, "200 OK") != NULL) {
-            output = "Successfully deleted book!";
+            output = "SUCCESS - Successfully deleted book!";
         } else {
-            output = "Failed to delete book!";
+            if (strstr(response, "error\":\"Error when decoding tokenn!")) {
+                output = "ERROR - Invalid token!";
+            } else {
+                output = "ERROR - Failed to delete book!";
+            }
         }
+        return NULL;
     } else if (command == "logout") {
         if (strstr(response, "200 OK") != NULL) {
-            output = "Successfully logged out!";
+            output = "SUCCESS - Successfully logged out!";
+            aux_data = 1;
         } else {
-            output = "Failed to log out!";
+            output = "ERROR - Failed to log out!";
+            aux_data = 0;
         }
+        return NULL;
     } else {
         output = "ERROR - Invalid command!";
     }
