@@ -262,10 +262,15 @@ char * parse_response(std::string command, char *response, std::string &output, 
                 for (int i = 0; i < strlen(books); i++) {
                     if (books[i] == ']') {
                         books[i + 1] = '\0';
+                        break;
                     }
                 }
             }
-            output = books;
+            // output = books;
+            char aux_return[BUFLEN];
+            strcpy(aux_return, "SUCCESS\n");
+            strcat(aux_return, books);
+            output = aux_return;
         } else {
             if (!strstr(response, "error\":\"Error when decoding tokenn!")) {
                 output = "ERROR - Invalid token!";
